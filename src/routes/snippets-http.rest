@@ -1,0 +1,23 @@
+### Get all snippets
+GET http://localhost:3000/api/snippets
+
+### Create a new snippet
+POST http://localhost:3000/api/snippets
+Content-Type: application/json
+
+{
+  "title": "Test from VSCode",
+  "code": "const test = true;",
+  "language": "JavaScript"
+}
+
+### Udate snippet by id
+PUT http://localhost:3000/api/snippets/1
+Content-Type: application/json
+
+{
+  "title": "Console logging"
+}
+
+### Delete snippet by id
+DELETE http://localhost:3000/api/snippets/2
