@@ -7,8 +7,8 @@ Content-Type: application/json
 
 {
   "title": "Test from VSCode",
-  "code": "const test = true;",
-  "language": "JavaScript"
+  "code": "const a: number = 10;",
+  "language": "TypeScript"
 }
 
 ### Udate snippet by id
@@ -16,8 +16,8 @@ PUT http://localhost:3000/api/snippets/1
 Content-Type: application/json
 
 {
-  "title": "Console logging"
+  "title": "Some JS example"
 }
 
 ### Delete snippet by id
-DELETE http://localhost:3000/api/snippets/2
+DELETE http://localhost:3000/api/snippets/1
