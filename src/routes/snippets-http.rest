@@ -1,18 +1,22 @@
 ### Get all snippets
 GET http://localhost:3000/api/snippets
 
+
+### Get a snippet by ID
+GET http://localhost:3000/api/snippets/4
+
 ### Create a new snippet
 POST http://localhost:3000/api/snippets
 Content-Type: application/json
 
 {
   "title": "Test from VSCode",
-  "code": "const a: number = 10;",
-  "language": "TypeScript"
+  "code": "const add = (a, b) => a + b;",
+  "language": "JavaScript"
 }
 
 ### Udate snippet by id
-PUT http://localhost:3000/api/snippets/1
+PUT http://localhost:3000/api/snippets/3
 Content-Type: application/json
 
 {
@@ -20,4 +24,4 @@ Content-Type: application/json
 }
 
 ### Delete snippet by id
-DELETE http://localhost:3000/api/snippets/1
+DELETE http://localhost:3000/api/snippets/3

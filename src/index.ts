@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import "./db";
+import { errorHandler } from "./middleware/errorHandler";
 import snippetsRouter from "./routes/snippets";
 
 const app = express();
@@ -21,6 +22,9 @@ app.use("/api/snippets", snippetsRouter);
 app.use("/", (req, res) => {
 	res.json({ message: "Welcome on SnippetsAPI!" });
 });
+
+// Global Error Handler MUST be registered after all routes and routers
+app.use(errorHandler);
 
 app.listen(PORT, () => {
 	console.log(`Server is running on: http://localhost:${PORT}`);
