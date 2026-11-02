@@ -1,21 +1,42 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Response } from "express";
 import pool from "../db";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
 
-export const getSnippets = async (req: Request, res: Response, next: NextFunction) => {
+// GET: Fetch all snippets
+export const getSnippets = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 	try {
-		// Execute a SQL query to get all snippets, newest first
-		const result = await pool.query("SELECT * FROM snippets ORDER BY id ASC");
-		// Send the rows returned by the database
+		const result = await pool.query("SELECT * FROM snippets ORDER BY created_at DESC");
 		res.json(result.rows);
 	} catch (error) {
-		// Pass unexpected database errors to the global error middleware
 		next(error);
 	}
 };
 
-export const getSnippetById = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
-	const id = parseInt(req.params.id, 10);
+// GET: Fetch snippets belonging exclusively to the authenticated user
+export const getMySnippets = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+	const userId = req.user?.userId;
 
+	// Guard check for TypeScript type narrowing
+	if (!userId) {
+		res.status(401).json({ error: "Unauthorized" });
+		return;
+	}
+
+	try {
+		const result = await pool.query("SELECT * FROM snippets WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
+		res.json(result.rows);
+	} catch (error) {
+		next(error);
+	}
+};
+
+// GET: Fetch a single snippet by ID
+export const getSnippetById = async (
+	req: AuthenticatedRequest<{ id: string }>,
+	res: Response,
+	next: NextFunction,
+): Promise<void> => {
+	const id = parseInt(req.params.id, 10);
 	if (isNaN(id)) {
 		res.status(400).json({ error: "Invalid ID format" });
 		return;
@@ -23,40 +44,41 @@ export const getSnippetById = async (req: Request<{ id: string }>, res: Response
 
 	try {
 		const result = await pool.query("SELECT * FROM snippets WHERE id = $1", [id]);
-
 		if (result.rows.length === 0) {
 			res.status(404).json({ error: "Snippet not found" });
 			return;
 		}
 		res.json(result.rows[0]);
 	} catch (error) {
-		// Pass unexpected database errors to the global error middleware
 		next(error);
 	}
 };
 
-export const createSnippet = async (req: Request, res: Response, next: NextFunction) => {
+// POST: Create a new snippet linked to the logged-in user
+export const createSnippet = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 	const { title, code, language } = req.body;
+	const userId = req.user?.userId;
 
 	try {
-		// Use parameterized queries ($1, $2, $3) to prevent SQL Injection
-		const result = await pool.query("INSERT INTO snippets (title, code, language) VALUES ($1, $2, $3) RETURNING *", [
-			title,
-			code,
-			language || "plaintext",
-		]);
-
-		// Return 201 Created and the newly inserted row
+		const result = await pool.query(
+			"INSERT INTO snippets (title, code, language, user_id) VALUES ($1, $2, $3, $4) RETURNING *",
+			[title, code, language || "plaintext", userId],
+		);
 		res.status(201).json(result.rows[0]);
 	} catch (error) {
-		// Pass unexpected database errors to the global error middleware
 		next(error);
 	}
 };
 
-export const updateSnippet = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
+// PUT: Update an existing snippet (Ownership check)
+export const updateSnippet = async (
+	req: AuthenticatedRequest<{ id: string }>,
+	res: Response,
+	next: NextFunction,
+): Promise<void> => {
 	const id = parseInt(req.params.id, 10);
 	const { title, code, language } = req.body;
+	const userId = req.user?.userId;
 
 	if (isNaN(id)) {
 		res.status(400).json({ error: "Invalid ID format" });
@@ -64,32 +86,36 @@ export const updateSnippet = async (req: Request<{ id: string }>, res: Response,
 	}
 
 	try {
-		// COALESCE keeps the existing database value if the incoming parameter is NULL
+		// Ensure the snippet belongs to the requesting user via user_id = $5
 		const result = await pool.query(
 			`UPDATE snippets
              SET title = COALESCE($1, title),
                  code = COALESCE($2, code),
                  language = COALESCE($3, language)
-             WHERE id = $4
+             WHERE id = $4 AND user_id = $5
              RETURNING *`,
-			[title ?? null, code ?? null, language ?? null, id],
+			[title ?? null, code ?? null, language ?? null, id, userId],
 		);
 
-		// If no row was matched, the snippet with this ID does not exist
 		if (result.rows.length === 0) {
-			res.status(404).json({ error: "Snippet not found" });
+			res.status(404).json({ error: "Snippet not found or access denied" });
 			return;
 		}
 
 		res.json(result.rows[0]);
 	} catch (error) {
-		// Pass unexpected database errors to the global error middleware
 		next(error);
 	}
 };
 
-export const deleteSnippet = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
+// DELETE: Remove a snippet (Ownership check)
+export const deleteSnippet = async (
+	req: AuthenticatedRequest<{ id: string }>,
+	res: Response,
+	next: NextFunction,
+): Promise<void> => {
 	const id = parseInt(req.params.id, 10);
+	const userId = req.user?.userId;
 
 	if (isNaN(id)) {
 		res.status(400).json({ error: "Invalid ID format" });
@@ -97,17 +123,14 @@ export const deleteSnippet = async (req: Request<{ id: string }>, res: Response,
 	}
 
 	try {
-		const result = await pool.query("DELETE FROM snippets WHERE id = $1", [id]);
-
-		// result.rowCount tells us how many rows were deleted by the SQL query
+		const result = await pool.query("DELETE FROM snippets WHERE id = $1 AND user_id = $2", [id, userId]);
 		if (result.rowCount === 0) {
-			res.status(404).json({ error: "Snippet not found" });
+			res.status(404).json({ error: "Snippet not found or access denied" });
 			return;
 		}
 
 		res.status(204).send();
 	} catch (error) {
-		// Pass unexpected database errors to the global error middleware
 		next(error);
 	}
 };

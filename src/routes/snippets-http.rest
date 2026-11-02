@@ -1,27 +1,128 @@
-### Get all snippets
-GET http://localhost:3000/api/snippets
+### ==========================================
+### 1. АУТЕНТИФИКАЦИЯ И СЕССИИ (Пользователь 1)
+### ==========================================
+
+### 1.1 Регистрация первого пользователя
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user1@example.com",
+  "password": "password123"
+}
+
+### 1.2 Вход первого пользователя (Записывается cookie)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@example.com",
+  "password": "password123"
+}
+
+### 1.3 Проверка текущей сессии
+GET http://localhost:3000/api/auth/me
+Cookie: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoidXNlcjFAZXhhbXBsZS5jb20iLCJpYXQiOjE3OTMzNjg2MTksImV4cCI6MTc5MzQ1NTAxOX0.l3GG5Jx_7fwKtsOZ0ZtwayrWQSEKWKvrZlIIbNZunis
 
 
-### Get a snippet by ID
-GET http://localhost:3000/api/snippets/4
+### ==========================================
+### 2. РАБОТА СО СНИППЕТАМИ (Под Пользователем 1)
+### ==========================================
 
-### Create a new snippet
+### 2.1 Создать первый сниппет
 POST http://localhost:3000/api/snippets
 Content-Type: application/json
 
 {
-  "title": "Test from VSCode",
-  "code": "const add = (a, b) => a + b;",
-  "language": "JavaScript"
+  "title": "React useState Hook",
+  "code": "const [state, setState] = useState(null);",
+  "language": "typescript"
 }
 
-### Udate snippet by id
-PUT http://localhost:3000/api/snippets/3
+### 2.2 Создать второй сниппет
+POST http://localhost:3000/api/snippets
 Content-Type: application/json
 
 {
-  "title": "Some JS example"
+  "title": "Express Global Error Handler",
+  "code": "app.use((err, req, res, next) => { res.status(500).json({ error: err.message }); });",
+  "language": "typescript"
 }
 
-### Delete snippet by id
-DELETE http://localhost:3000/api/snippets/3
+### 2.3 Получить ВСЕ сниппеты (Публичная витрина)
+GET http://localhost:3000/api/snippets
+
+### 2.4 Получить ТОЛЬКО МОИ сниппеты (Защищенный маршрут)
+GET http://localhost:3000/api/snippets/my
+
+### 2.5 Получить конкретный сниппет по ID (Замени 1 на реальный ID)
+GET http://localhost:3000/api/snippets/2
+
+### 2.6 Обновить свой сниппет (Замени 1 на реальный ID)
+PUT http://localhost:3000/api/snippets/8
+Content-Type: application/json
+
+{
+  "title": "Express Global Error Handler 2",
+  "language": "javascript"
+}
+
+### 2.7 Удалить свой сниппет (Замени 2 на реальный ID)
+DELETE http://localhost:3000/api/snippets/8
+
+
+### ==========================================
+### 3. ПРОВЕРКА БЕЗОПАСНОСТИ И ПРАВ ДОСТУПА
+### ==========================================
+
+### 3.1 Регистрация второго пользователя
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user2@example.com",
+  "password": "password123"
+}
+
+### 3.2 Вход под вторым пользователем (Перезапишет cookie)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user2@example.com",
+  "password": "password123"
+}
+
+### 3.3 Попытка изменить сниппет Пользователя 1 (Должно вернуть 404 Not Found / Access Denied)
+PUT http://localhost:3000/api/snippets/7
+Content-Type: application/json
+
+{
+  "title": "Hacked Title"
+}
+
+### 3.4 Попытка удалить сниппет Пользователя 1 (Должно вернуть 404 Not Found / Access Denied)
+DELETE http://localhost:3000/api/snippets/7
+
+### 3.5 Запрос личных сниппетов Пользователя 2 (Вернет пустой массив [])
+GET http://localhost:3000/api/snippets/my
+
+
+### ==========================================
+### 4. ВЫХОД И ПРОВЕРКА НЕАВТОРИЗОВАННОГО ДОСТУПА
+### ==========================================
+
+### 4.1 Выход из системы (Сброс cookie)
+POST http://localhost:3000/api/auth/logout
+
+### 4.2 Попытка запросить личные сниппеты без cookie (Должно вернуть 401 Unauthorized)
+GET http://localhost:3000/api/snippets/my
+
+### 4.3 Попытка создать сниппет без cookie (Должно вернуть 401 Unauthorized)
+POST http://localhost:3000/api/snippets
+Content-Type: application/json
+
+{
+  "title": "Unauthorized Snippet",
+  "code": "console.log('fail');"
+}
